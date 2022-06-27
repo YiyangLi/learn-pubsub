@@ -7,9 +7,13 @@ import logger from './utils/logger';
 import {AddressInfo} from 'net';
 import dotenv from 'dotenv';
 import _ from 'lodash';
+import {Server} from 'http';
 
 dotenv.config();
-const delay = parseInt(process.env.DELAY_IN_MS || '') || 1000;
+const delay: number = parseInt(process.env.DELAY_IN_MS || '') || 1000;
+const closeAfterIdleInMs: number =
+  parseInt(process.env.CLOSE_AFTER_IDLE_IN_MS || '') || 60000;
+const idleMsg = `no messages for ${closeAfterIdleInMs} ms, close it.`;
 
 export default function Consumer(
   topic: string,
@@ -19,6 +23,7 @@ export default function Consumer(
   const client = express();
   const extraWaiting = isSlow ? delay : 0;
   let available = false;
+  let timeoutId: NodeJS.Timeout;
   client.use(bodyParser.json());
   client.use(cors());
   client.get('/favicon.ico', (req, res) => res.status(204));
@@ -31,6 +36,12 @@ export default function Consumer(
     if (req?.body?.topic !== topic) {
       res.status(400).send('Error: Mismatch topic');
       return;
+    }
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        closeServer(server, idleMsg);
+      }, closeAfterIdleInMs);
     }
     available = false;
     const randomWait: number = Math.floor(Math.random() * 500) + extraWaiting;
@@ -56,12 +67,14 @@ export default function Consumer(
         await subscribe(topic, consumerPort, serverPort);
         available = true;
       } catch {
-        logger.error('unable to subscribe, close the client');
-        server.close();
+        closeServer(server, 'unable to subscribe, close the client');
       }
     } else {
-      server.close();
+      closeServer(server, 'unknown error in allocating ports');
     }
+    timeoutId = setTimeout(() => {
+      closeServer(server, idleMsg);
+    }, closeAfterIdleInMs);
   });
 }
 
@@ -96,4 +109,9 @@ function instanceOfAddressInfo(
     typeof address !== 'string' &&
     'port' in address
   );
+}
+
+function closeServer(server: Server, reason: string) {
+  logger.info(reason);
+  server.close();
 }

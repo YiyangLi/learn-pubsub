@@ -127,17 +127,10 @@ async function batchProcess(
   await Promise.allSettled(
     tuples.map(
       async ([msg, port]: [string | undefined, number | undefined]) => {
-        if (msg === undefined) {
-          logger.error("this is a bug, message can't be undefined");
-        }
-        if (port === undefined) {
-          logger.error("this is a bug, the port can't be undefined");
-          unprocessed.push(msg as string);
-          return;
-        }
         try {
           await sendMessage(topic, msg as string, port as number);
-        } catch {
+        } catch (reason) {
+          logger.error(`consumer busy or unavailable, ${reason}`);
           unprocessed.push(msg as string);
         }
       }

@@ -9,6 +9,7 @@ Regardless of size of consumers, each message will be printed by one consumer on
 ## Install
 ### Prerequesite 
 [npm > 7.0](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+
 [node > 12.9.0](https://nodejs.org/en/download/)
 
 ### Environment variables
@@ -16,10 +17,11 @@ Regardless of size of consumers, each message will be printed by one consumer on
 
 | Name | type | Description | Default |
 | --- | ----| ----------- | --------- |
-| LOG_LEVEL | `info` or `debug` | the log level for the logger | info |
+| LOG_LEVEL | enum | the log level for the logger | info |
 | PORT | number | Specify the port for the Pubsub server | 3000 |
 | DELAY_IN_MS | number | To create a slow consumer, you may setup an extra waiting time, the unit is millisecond | 1000 |
 | PUSH_SCHEDULE_IN_MS | number | the frequency to check the messages size and send messages to consumers if not empty, the unit is millisecond | 500 |
+| CLOSE_AFTER_IDLE_IN_MS | number | timeout for consumers, if there is no messages delivered for a while, it will be closed | 60000 |
 
 ### To install
 Developed in node, but you could run it from cli after the installation. 
@@ -107,7 +109,36 @@ Once a message is received, the pubsub will respond the pubsub server by a 201 s
 todo: change the section to an open api. 
 ```
 ### Pubsub Server
-POST /
+#### POST /publish
+Publish a message to the message queue. 
+sample body
+```json
+{
+  "message": "123",
+  "topic": "foo"
+}
+```
+
+#### POST /subscribe
+Subscribe a consumer, the port is the identifier and also the endpoint used to send messages to. 
+sample body
+```json
+{
+  "port": 50481,
+  "topic": "foo"
+}
+```
+
+### Consumer
+#### POST /work
+Send a message to consumer to process, the topic is used for validation. 
+sample body
+```json
+{
+  "topic": "foo",
+  "message": "123"
+}
+```
 
 
 ## Limitation
@@ -119,12 +150,26 @@ The consumer, an express server, will close if there are no messages received in
 
 The port is randomly allocated, there is a rare case where a new consumer starts at the port recycled from an old consumer, and their topics are different. And because the old consumer, identified by the port, is not unsubscribed. The message under the wrong topic will be sent to the new consumer. The short-term fix is to block the request if the topic is different. The long-term fix is to use a different identifier, or unsubscribe the old consumer correctly. 
 
-
 ## Test
-In total, I prepared 10 sets of tests
-### Test1
+It's not easy to build an automated tests for it. All tests here are scenarios based. In total, I prepared 10 sets of tests, 3 easy, 4 normal, and 3 complex. 
 
-### Test2
+Since each involves multiple tabs / processes under the CLI, and the environment variables matter a lot, I will include the `.env` and print the output to the corresponding README.md
+
+### Simple
+[One normal consumer and a topic](tests/1/README.md)
+[One slow consumer and a aggressive push schedule](tests/2/README.md)
+[One consumer on foo and another consumer on bar](tests/3/README.md)
+
+### Medium
+[Two consumers on the same topic, traffic should be distributed](tests/4/README.md)
+[Two consumers on the same topic, the normal one delivers more than the slow](tests/5/README.md)
+[Publish messages firstly, then start consumers](tests/6/README.md)
+[Publish messages firstly, then start a slow and a normal consumer](tests/7/README.md)
+
+### Complex
+[8/10 are unavailable consumers, but there are 10 messages](tests/8/README.md)
+[8/10 are unavailable consumers, but there are 5 messages](tests/9/README.md)
+[large dataset test](tests/10/README.md)
 
 ## Uninstall
 ```
