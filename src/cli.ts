@@ -2,6 +2,7 @@
 import yargs from 'yargs';
 import {hideBin} from 'yargs/helpers';
 import Server from './server';
+import Consumer from './consumer';
 import logger from './utils/logger';
 import dotenv from 'dotenv';
 
@@ -9,21 +10,14 @@ import axios from 'axios';
 import {randomUUID} from 'crypto';
 dotenv.config();
 const defaultPort: number = (process.env.PORT as unknown as number) || 3000;
+
 yargs(hideBin(process.argv))
   .command(
-    'start <port>',
-    'start a pubsub API server at port',
-    yargs => {
-      return yargs.positional('port', {
-        describe: 'port to bind on',
-        type: 'number',
-        default: defaultPort,
-      });
-    },
+    'start',
+    'start a pubsub API server',
+    () => {},
     argv => {
-      if (argv.debug) {
-        logger.debug(`start pubsub is running on :${argv.port}`);
-      }
+      logger.debug(`start pubsub is running on :${argv.port}`);
       Server(argv.port as number);
     }
   )
@@ -33,11 +27,14 @@ yargs(hideBin(process.argv))
     description: 'Run with debug logging',
     default: process.env.LOG_LEVEL === 'debug',
   })
-  .parse();
-
-yargs(hideBin(process.argv))
+  .option('port', {
+    alias: 'p',
+    type: 'number',
+    description: `start the server at a port different than the one in .env: ${defaultPort}`,
+    default: defaultPort,
+  })
   .command(
-    'publish [message] <topic>',
+    'publish <topic> [message]',
     'publish a message to the topic',
     yargs => {
       return yargs
@@ -53,13 +50,12 @@ yargs(hideBin(process.argv))
         });
     },
     async argv => {
-      logger.info(argv.message);
-      if (argv.debug) {
-        logger.debug(`you want to publish ${argv.message} to ${argv.topic}`);
-      }
+      logger.debug(
+        `you want to publish "${argv.message}" to topic "${argv.topic}"`
+      );
       const data = JSON.stringify({
-        message: '123',
-        topic: 'foo',
+        message: argv.message,
+        topic: argv.topic,
       });
       const port = argv.port || defaultPort;
       const config = {
@@ -70,26 +66,38 @@ yargs(hideBin(process.argv))
         },
         data: data,
       };
-      console.log('123');
       await axios(config)
         .then(response => {
-          logger.info(`status: ${response.status}`);
+          logger.info(`status: ${response.status}; body: ${data}`);
         })
         .catch(error => {
           logger.error(error);
         });
     }
   )
-  .option('port', {
-    alias: 'p',
-    type: 'number',
-    description: `publish to the server if the port is different than the one in .env: ${defaultPort}`,
-    default: process.env.LOG_LEVEL === 'debug',
-  })
-  .option('debug', {
-    alias: 'd',
-    type: 'boolean',
-    description: 'Run with debug logging',
-    default: process.env.LOG_LEVEL === 'debug',
-  })
+  .command(
+    'consume <topic> [slow]',
+    'consume messages on a topic',
+    yargs => {
+      return yargs
+        .positional('topic', {
+          describe: 'the topic you want send message to, use double quotes',
+          type: 'string',
+          default: process.env.TOPIC || 'foo',
+        })
+        .positional('slow', {
+          describe: 'is it a slow client that takes time to process task?',
+          type: 'boolean',
+          default: false,
+        });
+    },
+    async argv => {
+      logger.debug(
+        `create a${argv.slow ? ' slow ' : ' '}client to process topic "${
+          argv.topic
+        }"`
+      );
+      Consumer(argv.topic, argv.slow, argv.port);
+    }
+  )
   .parse();

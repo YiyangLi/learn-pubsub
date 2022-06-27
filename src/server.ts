@@ -20,7 +20,18 @@ export default function Server(port: number) {
     res.sendStatus(201);
   });
 
+  pubsubApp.post(
+    '/subscribe',
+    (req: express.Request, res: express.Response) => {
+      const topic = req.body.topic as unknown as string;
+      const port = req.body.port as unknown as number;
+      const size = PubSubPush.subscribe(topic, port);
+      logger.info(`topic - ${topic} contains ${size} subscribers`);
+      res.sendStatus(201);
+    }
+  );
+
   pubsubApp.listen(port, () => {
-    logger.debug(`A Pubsub Server is started at localhost:${port}`);
+    logger.info(`A Pubsub Server is started at localhost:${port}`);
   });
 }

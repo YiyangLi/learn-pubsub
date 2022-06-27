@@ -3,7 +3,10 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "dist",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "lib": [
+      "ES2020.Promise",
+    ]
   },
   "include": [
     "src/**/*.ts",
