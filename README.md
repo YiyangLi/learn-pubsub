@@ -4,7 +4,7 @@ A push-based Pubsub API server developed in TypeScript / Express.js. The module 
 - The send-and-forget publisher that publishes a message to the pubsub server.
 - A long-running consumer that waits for messages from the pubsub server. 
 
-Regardless of the size of consumers, each message will be processed by one consumer only. 
+Regardless of the size of consumers, each message will be processed once by one consumer only. 
 
 ## Install
 ### Prerequesite 
@@ -33,7 +33,7 @@ $ npm install
 $ npm link
 ```
 
-You could get the help menu to verify it. 
+You could get the help menu to verify the installation. 
 ```
 $ pubsubyy --help
 pubsubyy [command]
@@ -54,7 +54,7 @@ Options:
 
 
 ## How to run it
-Assuming you have installed it successfully, the command is added to your path. 
+If you install it successfully, the command will be added to your path. 
 It's recommended to setup environment variables via an `.env` file. 
 ```shell
 $ touch .env
@@ -75,15 +75,15 @@ info: A Pubsub Server is started at localhost:3000
 
 The push-based pubsub server is responsible to distribute messages to consumers. If a message is not delivered because the consumer is busy or unavailable, the message will be pushed back to end of the queue. They will be distributed again in the next round. That is to say, the order of delivery may be different than the order of arrival. Each message is independent to each other. 
 
-Once the pubsub server can guarantee a message is delivered successfully, it will no longer process the message. It can't, however, guarantee the message is processed successfully. I will cover it more under the limitation section. 
+The pubsub server guarantees a message is delivered successfully. Once a message delivered, it will be dropped. The server doesn't, however, guarantee the message is processed the consumer successfully. 
 
 ### To publish a message
-Follow the format `pubsubyy publish <topic> [message]`, where `message` is optional. If it's not defined, a random UUID will be the message. 
+Follow the format `pubsubyy publish <topic> [message]`, where `message` is optional. If it's not defined, a random-generated UUID will be the message. 
 ```shell
 $ pubsubyy publish complex "a message with spaces"
 $ pubsubyy publish simple
 ```
-Use double quotes `"` if you the topic or the message contains spaces.
+Use double quotes `"` if the topic or the message contains spaces.
 
 ### To initiate a consumer
 Each consumer is an express server, you don't need to specify the port, it will automatically assign one for you. And the pubsub server knows the port after it successfully subscribes the topic. 
@@ -96,11 +96,10 @@ $ pubsubyy consume simple
 $ pubsubyy consume "complex" true
 ```
 
-Once a message is received, the pubsub will respond the pubsub server by a 201 status code. After that, the consumer will process the message in the console after a wait time. The consumer is busy and return a 503 status code. It can't no longer accept a message until the current one is processed. 
-
+Once a message is received, the consumer will respond the pubsub server by a 201 status code. To simulate a message task, the consumer prints the message in the console after a wait time. Each consumer processes one message at a time only. During the wait time, the consumer changes to busy and returns a 503 status code for a new request. The consumer becomes available after the current message is processed.  
 
 ## Test
-It's not easy to build an automated tests. All tests here are scenarios based. In total, I prepared 10 sets of tests, 3 easy, 4 normal, and 3 complex. 
+It's not easy to build automated tests. All tests here are scenarios based. In total, I prepared 10 sets of tests, 3 easy, 4 normal, and 3 complex. 
 
 Since each involves multiple tabs / processes under the CLI, and the environment variables matter a lot, I will include the `.env` and print the output to the corresponding README.md
 
@@ -120,7 +119,7 @@ Since each involves multiple tabs / processes under the CLI, and the environment
 - [8 out of 10 consumers are unavailable, less messages](tests/9/README.md)
 - [100 messages, 3 random consumers](tests/10/README.md)
 
-### Uninstall
+## Uninstall
 `pubsubyy` instead of `pubsub` is added to your path, to remove it, you need to unlink it globally from the project folder, not the process folder. 
 ```shell
 $ cd learn-pubsub
@@ -168,18 +167,21 @@ sample body
 
 ## Limitation
 ### The pubsub server
-Normally, you may press `cmd + c` or `ctrl + c` to terminate the consumer. The brute force won't unsubscribe the consumer from the pubsub server. The pubsub server will consequently accumulate a list of unhealthy consumers, and try to push messages in every iteration. 
+Normally, you may press `cmd + c` or `ctrl + c` to terminate the consumer. The brute force won't unsubscribe the consumer from the pubsub server. The pubsub server will consequently accumulate a list of unhealthy consumers, and try to push messages to all consumers, including unhealthy, in every iteration. It's a waste of resources. 
+
+The pubsub server drops a message from the queue once it's delivered to consumer. The pubsub server doesn't know the state or status of the message task.
 
 ### The consumer
-The consumer, an express server, will close if there are no messages received in a period. However, the unsubscribe is not implemented in the pubsub server, the consumer is not removed from the pubsub server when it's being closed.
+The consumer, an express server, will close if there are no messages received in a period. Unlike a brute force termination, the express server is closed programmatically. However, the unsubscribe endpoint is not implemented in the pubsub server, the consumer is not removed from the pubsub server when it's being closed.
 
-The port is randomly allocated, there is a rare case where a new consumer starts at the port recycled from an old consumer, and their topics are different. And because the old consumer, identified by the port, is not unsubscribed. The message under the wrong topic will be sent to the new consumer. The short-term fix is to block the request if the topic is different. The long-term fix is to use a different identifier, or unsubscribe the old consumer correctly. 
+The port is randomly allocated when a consumer starts, there is a rare case where a new consumer starts at the port recycled from an old consumer, and their topics are different. And because the old consumer, identified by the port, is not unsubscribed. The message under the old topic will be wrongly sent to the new consumer. The short-term fix is to validate the request and reject it if the topic is different. The long-term fix is to use a identifier other than a networking port, or even better, unsubscribe the old consumer gracefully and maintain the list of subscriptions correctly. 
 
 ## Todo list
 (if I have time)
 - Draft the doc for API (OpenAPI 3)
 - Implement unsubscribe endpoint in the Pubsub Server and unsubscribe it after the consumer is closed.
 - use an UUID instead of the port number to identify an consumer.
+- Learn how to run automated tests and find a CI tool for it. 
 - Learn the long polling version, and learn the golang from [this repo](https://github.com/teris-io/longpoll/tree/master)
 
 
