@@ -4,7 +4,7 @@ A push-based Pubsub API server developed in TypeScript / Express.js. The module 
 - The send-and-forget publisher that publishes a message to the pubsub server.
 - A long-running consumer that waits for messages from the pubsub server. 
 
-Regardless of size of consumers, each message will be printed by one consumer only. 
+Regardless of the size of consumers, each message will be processed by one consumer only. 
 
 ## Install
 ### Prerequesite 
@@ -96,7 +96,7 @@ $ pubsubyy consume simple
 $ pubsubyy consume "complex" true
 ```
 
-Once a message is received, the pubsub will respond the pubsub server by a 201 status code. After that, the consumer will print the message in the console after a wait time. The consumer is busy and return a 503 status code. It can't no longer accept a message until the current one is printed. 
+Once a message is received, the pubsub will respond the pubsub server by a 201 status code. After that, the consumer will process the message in the console after a wait time. The consumer is busy and return a 503 status code. It can't no longer accept a message until the current one is processed. 
 
 
 ## Test

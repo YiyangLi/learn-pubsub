@@ -9,7 +9,7 @@ This is the most simple test. A normal consumer takes less than 500 ms to proces
 | LOG_LEVEL | `info` | 
 | PORT | 3000 |  |
 | DELAY_IN_MS | 500 | |
-| PUSH_SCHEDULE_IN_MS | 1000 | The pubsub will push messages every 0.3 sec |
+| PUSH_SCHEDULE_IN_MS | 1000 | The pubsub will push messages every 1 sec |
 
 ## Results
 

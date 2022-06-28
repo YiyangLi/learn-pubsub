@@ -7,7 +7,7 @@ Create a normal consumer on topic "foo", and a normal consumer on topic "bar". A
 | LOG_LEVEL | `info` | 
 | PORT | 3000 |  |
 | DELAY_IN_MS | 500 | The slow consumer on average takes 500ms more time to print and turn back to idle |
-| PUSH_SCHEDULE_IN_MS | 500 | The pubsub will push messages every 0.5 seconds |
+| PUSH_SCHEDULE_IN_MS | 500 | The pubsub will push messages every .5 seconds |
 
 ## Results
 
