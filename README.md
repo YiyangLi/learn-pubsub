@@ -184,7 +184,7 @@ The port is randomly allocated, there is a rare case where a new consumer starts
 
 
 ## The Caveat
-Looks like [channels from the golang](https://go.dev/tour/concurrency/2) is designed to solve this problem. I fell into the rabbit hole when I tried to learn in during the weekend. I will try for sure later!
+Looks like [channels from the golang](https://go.dev/tour/concurrency/2) is designed to solve this problem. 
 JavaScript, however, is also convenient here because it is a single-threaded language. The language that comes with an event-loop brings you the concurrency, but allow you to skip the brain-teasing Mutex or Lock. However, there are some tricks in dealing with a collection. 
 1. concat 2 arrays using push and rest arguments
 ```
