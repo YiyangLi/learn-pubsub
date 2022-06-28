@@ -1,7 +1,7 @@
 # Test 1
 Create one normal consumer on topic "foo". And publish 10 messages on "foo" only. 
 
-This is the most simple test. A normal consumer takes less than 500 ms to process a message. So, all messages are processed in a series. 
+This is the most simple test. A normal consumer takes less than 500 ms to process a message. So, all messages are processed in a sequential order. 
 
 ## Environments
 | Name | value | Description|

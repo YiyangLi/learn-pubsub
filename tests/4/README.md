@@ -1,4 +1,4 @@
-# Test 6
+# Test 4
 Create 2 normal consumers on the same topic and publish messages on the topic, the traffic should be shared by the two. 
 
 Each message is processed once only. 
