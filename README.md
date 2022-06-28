@@ -51,16 +51,11 @@ Options:
                                                       [number] [default: "3001"]
 ```
 
-### To uninstall
-`pubsubyy` instead of `pubsub` is added to your path, to remove it, you need to unlink it globally from the project folder, not the process folder. 
-```shell
-$ cd learn-pubsub
-$ npm unlink -g learn-pubsub  
-```
+
 
 ## How to run it
-Assuming you have installed it successfully, you can run it from any folder under the command line. 
-It's recommended to setup environment variables via the `.env` file where you run the process. 
+Assuming you have installed it successfully, the command is added to your path. 
+It's recommended to setup environment variables via an `.env` file. 
 ```shell
 $ touch .env
 $ cat > .env << EOF
@@ -104,10 +99,41 @@ $ pubsubyy consume "complex" true
 Once a message is received, the pubsub will respond the pubsub server by a 201 status code. After that, the consumer will print the message in the console after a wait time. The consumer is busy and return a 503 status code. It can't no longer accept a message until the current one is printed. 
 
 
+## Test
+It's not easy to build an automated tests. All tests here are scenarios based. In total, I prepared 10 sets of tests, 3 easy, 4 normal, and 3 complex. 
+
+Since each involves multiple tabs / processes under the CLI, and the environment variables matter a lot, I will include the `.env` and print the output to the corresponding README.md
+
+### Simple
+- [1 consumer, 1 topic](tests/1/README.md)
+- [an aggressive push schedule but a slow consumer](tests/2/README.md)
+- [2 consumers, 2 topics](tests/3/README.md)
+
+### Medium
+- [2 consumers on the same topic](tests/4/README.md)
+- [2 consumers, but one of them is slow](tests/5/README.md)
+- [Publish messages firstly, then start consumers](tests/6/README.md)
+- [Publish messages firstly, then start a slow and a normal consumer](tests/7/README.md)
+
+### Complex
+- [8 out of 10 consumers are unavailable](tests/8/README.md)
+- [8 out of 10 consumers are unavailable, less messages](tests/9/README.md)
+- [100 messages, 3 random consumers](tests/10/README.md)
+
+### Uninstall
+`pubsubyy` instead of `pubsub` is added to your path, to remove it, you need to unlink it globally from the project folder, not the process folder. 
+```shell
+$ cd learn-pubsub
+$ npm unlink -g learn-pubsub  
+```
+
+To confirm it's removed, run the following
+```
+npm ls -g --depth=0 --link=true
+```
+
 ## API
-```
-todo: change the section to an open api. 
-```
+
 ### Pubsub Server
 #### POST /publish
 Publish a message to the message queue. 
@@ -140,7 +166,6 @@ sample body
 }
 ```
 
-
 ## Limitation
 ### The pubsub server
 Normally, you may press `cmd + c` or `ctrl + c` to terminate the consumer. The brute force won't unsubscribe the consumer from the pubsub server. The pubsub server will consequently accumulate a list of unhealthy consumers, and try to push messages in every iteration. 
@@ -150,33 +175,51 @@ The consumer, an express server, will close if there are no messages received in
 
 The port is randomly allocated, there is a rare case where a new consumer starts at the port recycled from an old consumer, and their topics are different. And because the old consumer, identified by the port, is not unsubscribed. The message under the wrong topic will be sent to the new consumer. The short-term fix is to block the request if the topic is different. The long-term fix is to use a different identifier, or unsubscribe the old consumer correctly. 
 
-## Test
-It's not easy to build an automated tests for it. All tests here are scenarios based. In total, I prepared 10 sets of tests, 3 easy, 4 normal, and 3 complex. 
+## Todo list
+(if I have time)
+- Draft the doc for API (OpenAPI 3)
+- Implement unsubscribe endpoint in the Pubsub Server and unsubscribe it after the consumer is closed.
+- use an UUID instead of the port number to identify an consumer.
+- Learn the long polling version, and learn the golang from [this repo](https://github.com/teris-io/longpoll/tree/master)
 
-Since each involves multiple tabs / processes under the CLI, and the environment variables matter a lot, I will include the `.env` and print the output to the corresponding README.md
 
-### Simple
-[One normal consumer and a topic](tests/1/README.md)
-[One slow consumer and a aggressive push schedule](tests/2/README.md)
-[One consumer on foo and another consumer on bar](tests/3/README.md)
-
-### Medium
-[Two consumers on the same topic, traffic should be distributed](tests/4/README.md)
-[Two consumers on the same topic, the normal one delivers more than the slow](tests/5/README.md)
-[Publish messages firstly, then start consumers](tests/6/README.md)
-[Publish messages firstly, then start a slow and a normal consumer](tests/7/README.md)
-
-### Complex
-[8/10 are unavailable consumers, but there are 10 messages](tests/8/README.md)
-[8/10 are unavailable consumers, but there are 5 messages](tests/9/README.md)
-[large dataset test](tests/10/README.md)
-
-## Uninstall
+## The Caveat
+Looks like [channels from the golang](https://go.dev/tour/concurrency/2) is designed to solve this problem. I fell into the rabbit hole when I tried to learn in during the weekend. I will try for sure later!
+JavaScript, however, is also convenient here because it is a single-threaded language. The language that comes with an event-loop brings you the concurrency, but allow you to skip the brain-teasing Mutex or Lock. However, there are some tricks in dealing with a collection. 
+1. concat 2 arrays using push and rest arguments
 ```
-$ npm unlink -g
+arr.push(...anotherArray);
 ```
+vs
+```
+arr = arr.concat(anotherArray);
+```
+2. [splice](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice) dequeues multiple elements from an array, and the return is elements dequeued. 
+[slice](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/splice) however gives you a shallow COPY of the array, but doesn't modify the original array. 
+3. To process messages concurrently, you can use Promise.all or Promise.allSettled. 
+```
+const asyncRes = await Promise.all(arr.map(async (i) => {
+	await sleep(10);
+	return i + 1;
+}));
+```
+However, if you worry about the rate limit, you could lower the concurrency by grouping them to chunks firstly, process the big group concurrently, but process each item in the group sequentially. 
+```
+const arr = [30, 10, 20, 20, 15, 20, 10];
 
-To confirm it's removed, run the following
+console.log(
+	_.groupBy(arr, (_v, i) => Math.floor(i / 3))
+);
+// {
+// 	0: [30, 10, 20],
+// 	1: [20, 15, 20],
+// 	2: [10]
+// }
+
+return Object.values(groups)
+	.reduce(async (memo, group) => [
+		...(await memo),
+		...(await Promise.all(group.map(iteratee)))
+	], []);
 ```
-npm ls -g --depth=0 --link=true
-```
+This is a [good read](https://advancedweb.hu/how-to-use-async-functions-with-array-map-in-javascript/).
